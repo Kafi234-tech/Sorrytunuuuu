@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kinetic Typography Reel</title>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@600;700&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+  body, html {
+    width: 100vw; height: 100vh; overflow: hidden;
+    background: #08041c; font-family: 'Hind Siliguri', sans-serif;
+  }
+
+  #stage {
+    position: relative; width: 100%; height: 100%;
+    overflow: hidden; background: radial-gradient(circle, #180b38 0%, #070212 100%);
+  }
+
+  .scene {
+    position: absolute; inset: 0;
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; overflow: hidden;
+  }
+  .scene.active { display: flex; }
+
+  /* প্লে বাটন সবসময় সবার উপরে দৃশ্যমান রাখার জন্য z-index বাড়িয়ে দেওয়া হয়েছে */
+  #play-btn {
+    position: absolute; top: 38px; right: 42px; z-index: 9999;
+    width: 0; height: 0;
+    border-top: 15px solid transparent;
+    border-bottom: 15px solid transparent;
+    border-left: 24px solid #ffffff;
+    cursor: pointer; filter: drop-shadow(0 0 8px rgba(255,255,255,0.8));
+    transition: transform 0.2s, opacity 0.3s;
+  }
+  #play-btn:hover { transform: scale(1.15); }
+  .playing #play-btn { opacity: 0; pointer-events: none; }
+
+  /* নিচের HUD টেক্সট */
+  .hud {
+    position: absolute; bottom: 14px; left: 20px; right: 20px; z-index: 9000;
+    display: flex; justify-content: space-between;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: rgba(255, 255, 255, 0.7); letter-spacing: 1px; pointer-events: none;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+  }
+
+  @keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes spinReverse { from { transform: rotate(360deg); } to { transform: rotate(0deg); } }
+  @keyframes popIn {
+    0% { transform: scale(0.3); opacity: 0; }
+    70% { transform: scale(1.08); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  @keyframes pulseWave {
+    0% { transform: scale(0.8); opacity: 0.9; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+  @keyframes swing {
+    0%, 100% { transform: rotate(-12deg); }
+    50% { transform: rotate(12deg); }
+  }
+  @keyframes buzz {
+    0%, 100% { transform: translate(0, 0); }
+    25% { transform: translate(-6px, -8px); }
+    50% { transform: translate(6px, 4px); }
+    75% { transform: translate(-4px, 6px); }
+  }
+  @keyframes riseLetter {
+    from { transform: translateY(140px); }
+    to { transform: translateY(0); }
+  }
+
+  /* দৃশ্য ১ - ১৪ এর স্টাইল */
+  #scene-1 { background: repeating-conic-gradient(#26074d 0% 4%, #15032e 4% 8%); }
+  .ring-container { position: relative; width: 320px; height: 320px; display: flex; align-items: center; justify-content: center; }
+  .dashed-ring { position: absolute; border-radius: 50%; border-style: dashed; }
+  .ring-1 { width: 310px; height: 310px; border-width: 3px; border-color: #00f0ff; animation: spinSlow 12s linear infinite; }
+  .ring-2 { width: 250px; height: 250px; border-width: 3px; border-color: #ff00a0; animation: spinReverse 9s linear infinite; }
+  .ring-3 { width: 195px; height: 195px; border-width: 2px; border-color: #ffe600; animation: spinSlow 7s linear infinite; }
+  .giant-letter {
+    font-size: 130px; font-weight: 700; color: #f7d283;
+    text-shadow: 0 0 0 #d48b28, 4px 4px 0 #9e5a08, -3px -3px 0 #9e5a08;
+    animation: popIn 0.6s ease-out forwards; position: relative;
+  }
+
+  #scene-2 { display: none; }
+  #scene-2.active { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+  .quad {
+    display: flex; align-items: center; justify-content: center; gap: 18px;
+    font-size: clamp(38px, 6vw, 72px); font-weight: 700; border: 3px solid #000;
+    position: relative; overflow: hidden;
+  }
+  .q1 { background: #e8e629; color: #1a2340; }
+  .q2 { background: #00d46a; color: #0b2919; }
+  .q3 { background: #d6006e; color: #ffe6f2; }
+  .q4 { background: #0044ff; color: #80ffdb; }
+
+  #scene-3 {
+    background: radial-gradient(circle, #f59e0b 0%, #9a3412 100%);
+    background-image: radial-gradient(#b45309 20%, transparent 20%), radial-gradient(#b45309 20%, transparent 20%);
+    background-size: 40px 40px; background-position: 0 0, 20px 20px;
+  }
+  .title-3d-cyan {
+    font-size: clamp(46px, 7vw, 88px); color: #a5f3fc; font-weight: 700;
+    text-shadow: 4px 4px 0 #0e7490, 7px 7px 0 #164e63; animation: popIn 0.5s ease-out;
+  }
+  .title-3d-gold {
+    font-size: clamp(48px, 7.5vw, 92px); color: #fde047; font-weight: 700;
+    text-shadow: 4px 4px 0 #854d0e, 7px 7px 0 #422006; margin-top: 8px;
+  }
+
+  #scene-4 { background: #034f84; flex-direction: row; justify-content: flex-start; padding-left: 12vw; gap: 40px; }
+  .megaphone-wrap { position: relative; display: flex; align-items: center; }
+  .wave-circle {
+    position: absolute; width: 120px; height: 120px; border-radius: 50%;
+    border: 3px solid rgba(56, 189, 248, 0.5); animation: pulseWave 1.6s infinite;
+  }
+  .s4-words { display: flex; flex-wrap: wrap; max-width: 600px; gap: 16px; }
+  .s4-word {
+    font-size: clamp(40px, 6vw, 74px); font-weight: 700; color: #fef08a;
+    text-shadow: 3px 3px 0 #ca8a04, 6px 6px 0 #000; animation: popIn 0.35s ease-out;
+  }
+  .s4-word.alt { color: #f8fafc; text-shadow: 3px 3px 0 #0284c7, 6px 6px 0 #000; }
+
+  #scene-5 { background: #58006c; }
+  .saree-ribbon {
+    width: 110%; background: #f43f5e; border-top: 10px solid #fbbf24; border-bottom: 10px solid #fbbf24;
+    padding: 18px 0; text-align: center; transform: rotate(-4deg);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+  }
+  .saree-text {
+    font-size: clamp(48px, 7vw, 86px); color: #7dd3fc; font-weight: 700;
+    text-shadow: 4px 4px 0 #1e3a8a; animation: popIn 0.4s ease-out;
+  }
+
+  #scene-6 { background: #005f40; }
+  .top-border-strip {
+    position: absolute; top: 0; left: 0; width: 100%; height: 36px;
+    background: repeating-linear-gradient(45deg, #e11d48, #e11d48 20px, #fbbf24 20px, #fbbf24 40px);
+    border-bottom: 4px solid #fde047;
+  }
+
+  #scene-7 { background: #09090b; }
+  .gold-arch {
+    background: linear-gradient(90deg, #92400e, #fde047, #d97706, #fef08a, #92400e);
+    padding: 20px 60px; border-radius: 50% / 30%;
+    font-size: clamp(46px, 7vw, 84px); font-weight: 700; color: #3b0764;
+    box-shadow: 0 0 35px rgba(251, 191, 36, 0.5); animation: popIn 0.4s ease-out;
+  }
+  .swing-item { transform-origin: top center; animation: swing 1.8s ease-in-out infinite; }
+
+  #scene-8 { background: #d4d700; }
+  .speech-bubble {
+    background: #00e5ff; border: 6px solid #1e1b4b; border-radius: 60px;
+    padding: 25px 65px; position: relative; font-size: clamp(48px, 7vw, 86px);
+    font-weight: 700; color: #be185d; text-shadow: 3px 3px 0 #fff;
+    animation: popIn 0.4s ease-out;
+  }
+  .speech-bubble::after {
+    content: ''; position: absolute; bottom: -32px; left: 60px;
+    border-width: 32px 28px 0 0; border-style: solid;
+    border-color: #1e1b4b transparent transparent transparent;
+  }
+
+  #scene-9 { background: radial-gradient(circle, #3b0764 0%, #090214 100%); flex-direction: row; gap: 50px; }
+  .bou-text-wrap { display: flex; flex-direction: column; align-items: flex-start; }
+  .sub-white { font-size: clamp(36px, 5vw, 60px); color: #e2e8f0; text-shadow: 0 0 12px rgba(255,255,255,0.4); }
+  .giant-bou {
+    font-size: clamp(80px, 13vw, 150px); font-weight: 700; color: #ec4899;
+    text-shadow: 5px 5px 0 #facc15, 9px 9px 0 #831843; line-height: 1; animation: popIn 0.5s ease-out;
+  }
+
+  #scene-10 { background: #9d174d; }
+
+  #scene-11 {
+    background: linear-gradient(115deg, #991b1b 0%, #991b1b 38%, #0369a1 38%, #0284c7 100%);
+  }
+  .rag-text {
+    font-size: clamp(44px, 6.5vw, 82px); color: #0f172a; font-weight: 700;
+    text-shadow: 2px 2px 0 #38bdf8; text-align: center; max-width: 85%;
+  }
+  .rag-text span.pls {
+    font-family: Georgia, serif; font-style: italic; color: #7dd3fc;
+    text-shadow: 2px 2px 0 #082f49; margin-right: 16px;
+  }
+
+  #scene-12 { background: repeating-conic-gradient(#eab308 0% 5%, #ca8a04 5% 10%); }
+  .sun-face {
+    width: 340px; height: 340px; border-radius: 50%; background: #fde047;
+    border: 14px solid #ea580c; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; position: relative;
+    box-shadow: 0 0 60px rgba(234, 88, 12, 0.6); animation: popIn 0.5s ease-out;
+  }
+  .sun-eyes { display: flex; gap: 80px; margin-bottom: 12px; }
+  .sun-eye { width: 16px; height: 22px; background: #1c1917; border-radius: 50%; }
+  .sun-cheeks { position: absolute; width: 220px; display: flex; justify-content: space-between; top: 135px; }
+  .cheek { width: 32px; height: 18px; background: #f43f5e; border-radius: 50%; opacity: 0.7; }
+  .sun-lyric { font-size: 38px; font-weight: 700; color: #991b1b; margin-top: 10px; z-index: 2; }
+
+  #scene-13 {
+    background-color: #701a75;
+    background-image: linear-gradient(45deg, #a21caf 25%, transparent 25%),
+                      linear-gradient(-45deg, #a21caf 25%, transparent 25%),
+                      linear-gradient(45deg, transparent 75%, #a21caf 75%),
+                      linear-gradient(-45deg, transparent 75%, #a21caf 75%);
+    background-size: 80px 80px;
+    background-position: 0 0, 0 40px, 40px -40px, -40px 0;
+  }
+  .valobaso-text {
+    font-size: clamp(54px, 8.5vw, 110px); font-weight: 700; color: #fef08a;
+    text-shadow: 5px 5px 0 #15803d, -4px -4px 0 #be123c, 8px 8px 0 #000;
+    text-align: center; line-height: 1.1; animation: popIn 0.45s ease-out;
+  }
+
+  #scene-14 { background: #1e0936; }
+  .envelope-box {
+    position: relative; width: min(560px, 88vw); height: 340px;
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .letter-paper {
+    width: 88%; height: 260px; background: #7dd3fc; border: 4px solid #1e3a8a;
+    border-radius: 10px 10px 0 0; padding: 28px 20px; text-align: center;
+    background-image: repeating-linear-gradient(transparent, transparent 48px, rgba(30,58,138,0.2) 49px);
+    animation: riseLetter 0.9s ease-out forwards; position: relative; z-index: 2;
+  }
+  .letter-text { font-size: clamp(32px, 5vw, 54px); font-weight: 700; color: #881337; line-height: 1.4; }
+  .envelope-front {
+    position: absolute; bottom: 0; width: 100%; height: 130px;
+    background: #db2777; border-top: 6px solid #9d174d; z-index: 3;
+    display: flex; align-items: center; justify-content: center;
+    clip-path: polygon(0 0, 50% 35%, 100% 0, 100% 100%, 0 100%);
+  }
+
+  /* দৃশ্য ১৫: Designed by kafi */
+  #scene-15 {
+    background: repeating-conic-gradient(#1e0538 0% 4%, #0d021a 4% 8%);
+  }
+  .credit-card {
+    position: relative; width: 380px; height: 380px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .credit-ring-1 { width: 360px; height: 360px; border-width: 3px; border-color: #00f0ff; animation: spinSlow 14s linear infinite; }
+  .credit-ring-2 { width: 300px; height: 300px; border-width: 3px; border-color: #ec4899; animation: spinReverse 10s linear infinite; }
+  .credit-badge {
+    background: #f43f5e; border: 3px solid #fde047; color: #fef08a;
+    padding: 6px 24px; border-radius: 30px; font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(16px, 2.2vw, 22px); font-weight: 600; letter-spacing: 3px;
+    text-transform: uppercase; box-shadow: 0 6px 0 #881337;
+    animation: popIn 0.4s ease-out; z-index: 2;
+  }
+  .credit-name {
+    font-family: 'JetBrains Mono', sans-serif;
+    font-size: clamp(64px, 11vw, 115px); font-weight: 800; color: #fde047;
+    text-shadow: 5px 5px 0 #be185d, -3px -3px 0 #0284c7, 9px 9px 0 #000;
+    letter-spacing: 2px; margin-top: 10px; line-height: 1;
+    animation: popIn 0.6s ease-out; z-index: 2;
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="play-btn"></div>
+
+  <!-- দৃশ্য ১ -->
+  <div class="scene" id="scene-1">
+    <div class="ring-container">
+      <div class="dashed-ring ring-1"></div>
+      <div class="dashed-ring ring-2"></div>
+      <div class="dashed-ring ring-3"></div>
+      <div class="giant-letter">
+        <span id="txt-s1">আ</span>
+        <svg width="70" height="55" viewBox="0 0 100 80" style="position:absolute; top:-22px; left:28px;">
+          <path d="M10,65 Q40,20 75,30 Q90,35 80,55 Q55,65 10,65 Z" fill="#10b981"/>
+          <circle cx="72" cy="36" r="14" fill="#059669"/>
+          <circle cx="76" cy="34" r="3" fill="#fff"/>
+          <path d="M85,32 Q96,36 86,44 Z" fill="#ef4444"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- দৃশ্য ২ -->
+  <div class="scene" id="scene-2">
+    <div class="quad q1">
+      <span id="txt-s2-1">আতা</span>
+      <svg width="86" height="86" viewBox="0 0 100 100">
+        <path d="M50,18 L56,5" stroke="#15803d" stroke-width="6" stroke-linecap="round"/>
+        <circle cx="50" cy="55" r="36" fill="#10b981" stroke="#047857" stroke-width="4"/>
+        <circle cx="38" cy="45" r="7" fill="none" stroke="#047857" stroke-width="3"/>
+        <circle cx="54" cy="44" r="7" fill="none" stroke="#047857" stroke-width="3"/>
+        <circle cx="44" cy="60" r="7" fill="none" stroke="#047857" stroke-width="3"/>
+        <circle cx="58" cy="62" r="7" fill="none" stroke="#047857" stroke-width="3"/>
+      </svg>
+    </div>
+    <div class="quad q2">
+      <span id="txt-s2-2">গাছে</span>
+      <svg width="120" height="40" viewBox="0 0 120 40">
+        <path d="M0,25 Q60,15 120,22" stroke="#78350f" stroke-width="8" fill="none"/>
+        <ellipse cx="40" cy="12" rx="10" ry="5" fill="#15803d" transform="rotate(-25 40 12)"/>
+        <ellipse cx="85" cy="30" rx="10" ry="5" fill="#15803d" transform="rotate(20 85 30)"/>
+      </svg>
+    </div>
+    <div class="quad q3">
+      <span id="txt-s2-3">তোতা</span>
+      <svg width="85" height="70" viewBox="0 0 100 80">
+        <path d="M15,65 Q45,25 75,30 Q88,35 78,55 Q50,65 15,65 Z" fill="#10b981"/>
+        <circle cx="72" cy="36" r="13" fill="#10b981"/>
+        <circle cx="75" cy="34" r="3" fill="#000"/>
+        <path d="M84,33 Q95,38 84,45 Z" fill="#f43f5e"/>
+      </svg>
+    </div>
+    <div class="quad q4"><span id="txt-s2-4">পাখি,</span></div>
+  </div>
+
+  <!-- দৃশ্য ৩ -->
+  <div class="scene" id="scene-3">
+    <div class="title-3d-cyan" id="txt-s3-1">ডালিম গাছে</div>
+    <div style="display:flex; align-items:center; gap:35px;">
+      <svg width="95" height="95" viewBox="0 0 100 100">
+        <path d="M42,20 L46,10 L50,18 L55,10 L58,20 Z" fill="#be123c"/>
+        <circle cx="50" cy="56" r="36" fill="#e11d48" stroke="#881337" stroke-width="4"/>
+        <circle cx="38" cy="46" r="10" fill="#fb7185" opacity="0.4"/>
+      </svg>
+      <div class="title-3d-gold" id="txt-s3-2">মৌ।</div>
+      <div style="font-size:28px; animation: buzz 0.8s infinite;">🐝 🐝</div>
+    </div>
+  </div>
+
+  <!-- দৃশ্য ৪ -->
+  <div class="scene" id="scene-4">
+    <div class="megaphone-wrap">
+      <div class="wave-circle"></div>
+      <div class="wave-circle" style="animation-delay:0.5s"></div>
+      <svg width="110" height="110" viewBox="0 0 100 100">
+        <polygon points="15,40 75,15 75,85 15,60" fill="#f59e0b" stroke="#fef08a" stroke-width="4"/>
+        <rect x="5" y="42" width="12" height="16" rx="4" fill="#dc2626"/>
+        <path d="M25,62 L32,85 L44,85 L38,65" fill="#dc2626"/>
+      </svg>
+    </div>
+    <div class="s4-words">
+      <span class="s4-word" id="txt-s4-1">এত ডাকি তবু</span>
+      <span class="s4-word alt" id="txt-s4-2">কথা কও না কেন বউ</span>
+    </div>
+  </div>
+
+  <!-- দৃশ্য ৫ -->
+  <div class="scene" id="scene-5">
+    <div class="saree-ribbon"><div class="saree-text" id="txt-s5">কিনে দেবো শাড়ি</div></div>
+  </div>
+
+  <!-- দৃশ্য ৬ -->
+  <div class="scene" id="scene-6">
+    <div class="top-border-strip"></div>
+    <div class="title-3d-cyan" id="txt-s6">গঞ্জ থেকে চুড়ি</div>
+    <div style="display:flex; gap:18px; margin-top:24px;">
+      <div style="width:55px;height:55px;border-radius:50%;border:6px solid #f43f5e;"></div>
+      <div style="width:55px;height:55px;border-radius:50%;border:6px solid #fbbf24;"></div>
+      <div style="width:55px;height:55px;border-radius:50%;border:6px solid #38bdf8;"></div>
+    </div>
+  </div>
+
+  <!-- দৃশ্য ৭ -->
+  <div class="scene" id="scene-7">
+    <div class="gold-arch" id="txt-s7-1">সোনার বালা,</div>
+    <div style="display:flex; gap:40px; margin-top:28px; align-items:center;">
+      <div class="swing-item" style="color:#7dd3fc; font-size:clamp(34px,5vw,60px); font-weight:700;" id="txt-s7-2">⛓️ রুপোর দুল</div>
+      <div style="color:#fb923c; font-size:clamp(34px,5vw,60px); font-weight:700; text-shadow:3px 3px 0 #431407;" id="txt-s7-3">তামার বিছা</div>
+    </div>
+  </div>
+
+  <!-- দৃশ্য ৮ -->
+  <div class="scene" id="scene-8">
+    <div class="speech-bubble" id="txt-s8">কথা কও,</div>
+  </div>
+
+  <!-- দৃশ্য ৯ -->
+  <div class="scene" id="scene-9">
+    <div class="bou-text-wrap">
+      <div class="sub-white" id="txt-s9-1">তবু কথা কও</div>
+      <div class="giant-bou" id="txt-s9-2">বউ।</div>
+    </div>
+    <svg width="210" height="240" viewBox="0 0 200 220" style="animation: popIn 0.5s ease-out;">
+      <path d="M30,220 Q40,40 105,30 Q170,40 180,220 Z" fill="#dc2626" stroke="#fbbf24" stroke-width="6"/>
+      <ellipse cx="105" cy="125" rx="45" ry="52" fill="#e09f7d"/>
+      <path d="M58,95 Q105,40 152,105 Q130,65 60,95 Z" fill="#b91c1c" stroke="#fde047" stroke-width="4"/>
+      <circle cx="105" cy="88" r="5" fill="#dc2626"/>
+      <ellipse cx="88" cy="118" rx="6" ry="4" fill="#1e1b4b"/>
+      <ellipse cx="122" cy="118" rx="6" ry="4" fill="#1e1b4b"/>
+      <path d="M95,150 Q105,142 115,150" stroke="#7f1d1d" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <circle cx="96" cy="134" r="7" fill="none" stroke="#fde047" stroke-width="2"/>
+    </svg>
+  </div>
+
+  <!-- দৃশ্য ১০ -->
+  <div class="scene" id="scene-10">
+    <div class="title-3d-gold" id="txt-s10">তুমি আমার জান পাখি</div>
+    <svg width="160" height="150" viewBox="0 0 100 100" style="margin-top:15px; animation: popIn 0.5s ease-out;">
+      <path d="M50,88 C50,88 12,62 12,34 C12,18 28,10 42,20 C47,24 50,30 50,30 C50,30 53,24 58,20 C72,10 88,18 88,34 C88,62 50,88 50,88 Z" fill="none" stroke="#fbbf24" stroke-width="4"/>
+      <line x1="30" y1="22" x2="30" y2="65" stroke="#fbbf24" stroke-width="1.5"/>
+      <line x1="40" y1="22" x2="40" y2="75" stroke="#fbbf24" stroke-width="1.5"/>
+      <line x1="50" y1="30" x2="50" y2="85" stroke="#fbbf24" stroke-width="1.5"/>
+      <line x1="60" y1="22" x2="60" y2="75" stroke="#fbbf24" stroke-width="1.5"/>
+      <line x1="70" y1="22" x2="70" y2="65" stroke="#fbbf24" stroke-width="1.5"/>
+    </svg>
+  </div>
+
+  <!-- দৃশ্য ১১ -->
+  <div class="scene" id="scene-11">
+    <div class="rag-text">
+      <span class="pls" id="txt-s11-1">please,</span>
+      <span id="txt-s11-2">রাগ করোনা মিছেমিছি।</span>
+    </div>
+  </div>
+
+  <!-- দৃশ্য ১২ -->
+  <div class="scene" id="scene-12">
+    <div class="sun-face">
+      <div class="sun-eyes"><div class="sun-eye"></div><div class="sun-eye"></div></div>
+      <div class="sun-cheeks"><div class="cheek"></div><div class="cheek"></div></div>
+      <div class="sun-lyric" id="txt-s12">একটু খানি হাসো,</div>
+    </div>
+  </div>
+
+  <!-- দৃশ্য ১৩ -->
+  <div class="scene" id="scene-13">
+    <div class="valobaso-text" id="txt-s13">আমারে<br>ভালোবাসো</div>
+  </div>
+
+  <!-- দৃশ্য ১৪ -->
+  <div class="scene" id="scene-14">
+    <div class="envelope-box">
+      <div class="letter-paper">
+        <div class="letter-text" id="txt-s14">ভালোবেসে একটু<br>কথা কও।</div>
+      </div>
+      <div class="envelope-front"><span style="font-size:32px; margin-top:24px;">💛</span></div>
+    </div>
+  </div>
+
+  <!-- দৃশ্য ১৫ -->
+  <div class="scene" id="scene-15">
+    <div class="credit-card">
+      <div class="dashed-ring credit-ring-1"></div>
+      <div class="dashed-ring credit-ring-2"></div>
+      <div class="credit-badge" id="txt-s15-1">Designed by</div>
+      <div class="credit-name" id="txt-s15-2">kafi</div>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div id="hud-left">00 / STANDBY</div>
+    <div>KTC ENGINE | TYPE REEL &nbsp;<span id="hud-timer">00:00.00</span></div>
+  </div>
+</div>
+
+<audio id="bg-audio"></audio>
+
+<script>
+const CONFIG = {
+  audioFile: "song.mp3",
+
+  texts: {
+    "txt-s1":    "আ",
+    "txt-s2-1":  "আতা",
+    "txt-s2-2":  "গাছে",
+    "txt-s2-3":  "তোতা",
+    "txt-s2-4":  "পাখি,",
+    "txt-s3-1":  "ডালিম গাছে",
+    "txt-s3-2":  "মৌ।",
+    "txt-s4-1":  "এত ডাকি তবু",
+    "txt-s4-2":  "কথা কও না কেন বউ",
+    "txt-s5":    "কিনে দেবো শাড়ি",
+    "txt-s6":    "গঞ্জ থেকে চুড়ি",
+    "txt-s7-1":  "সোনার বালা,",
+    "txt-s7-2":  "⛓️ রুপোর দুল",
+    "txt-s7-3":  "তামার বিছা",
+    "txt-s8":    "কথা কও,",
+    "txt-s9-1":  "তবু কথা কও",
+    "txt-s9-2":  "বউ।",
+    "txt-s10":   "তুমি আমার জান পাখি",
+    "txt-s11-1": "please,",
+    "txt-s11-2": "রাগ করোনা মিছেমিছি।",
+    "txt-s12":   "একটু খানি হাসো,",
+    "txt-s13":   "আমারে<br>ভালোবাসো",
+    "txt-s14":   "ভালোবেসে একটু<br>কথা কও।",
+    "txt-s15-1": "Designed by",
+    "txt-s15-2": "kafi"
+  },
+
+  timeline: [
+    { start: 0.0,  scene: "scene-1",  hud: "01 / SYSTEM STARTUP / LETTER BUILD" },
+    { start: 2.5,  scene: "scene-2",  hud: "02 / QUAD SPLIT / RHYTHM LOCK" },
+    { start: 5.0,  scene: "scene-3",  hud: "03 / HONEYCOMB VECTOR / SYNC" },
+    { start: 7.2,  scene: "scene-4",  hud: "04 / ACOUSTIC WAVE / CALLOUT" },
+    { start: 10.5, scene: "scene-5",  hud: "05 / RIBBON WIPE / SAREE MOTIF" },
+    { start: 12.5, scene: "scene-6",  hud: "06 / BANGLE POP / GREEN STAGE" },
+    { start: 14.2, scene: "scene-7",  hud: "07 / METALLIC SHINE / ORNAMENTS" },
+    { start: 16.8, scene: "scene-8",  hud: "08 / DIALOGUE BUBBLE / POP" },
+    { start: 18.5, scene: "scene-9",  hud: "09 / CHARACTER VECTOR / BRIDE" },
+    { start: 23.0, scene: "scene-10", hud: "10 / HEART STRINGS / CHORUS" },
+    { start: 25.5, scene: "scene-11", hud: "11 / DIAGONAL SPLIT / PLEA" },
+    { start: 28.0, scene: "scene-12", hud: "12 / RADIAL SUNBURST / SMILE" },
+    { start: 30.2, scene: "scene-13", hud: "13 / CHECKERBOARD / 3D TYPE" },
+    { start: 32.5, scene: "scene-14", hud: "14 / ENVELOPE RISE / FINALE" },
+    { start: 36.0, scene: "scene-15", hud: "15 / SYSTEM CREDITS / DESIGNED BY KAFI" }
+  ],
+  totalDuration: 40.0
+};
+
+for (const [id, value] of Object.entries(CONFIG.texts)) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = value;
+}
+
+const playBtn = document.getElementById('play-btn');
+const bgAudio = document.getElementById('bg-audio');
+const hudLeft = document.getElementById('hud-left');
+const hudTimer = document.getElementById('hud-timer');
+const scenes = document.querySelectorAll('.scene');
+
+bgAudio.src = CONFIG.audioFile;
+
+let startTime = null;
+let animFrame = null;
+
+function formatTime(sec) {
+  const mins = Math.floor(sec / 60);
+  const secs = Math.floor(sec % 60);
+  const ms = Math.floor((sec % 1) * 100);
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+}
+
+function updateStage() {
+  const elapsed = (performance.now() - startTime) / 1000;
+
+  if (elapsed >= CONFIG.totalDuration) {
+    document.body.classList.remove('playing');
+    cancelAnimationFrame(animFrame);
+    return;
+  }
+
+  hudTimer.textContent = formatTime(elapsed);
+
+  let current = CONFIG.timeline[0];
+  for (const item of CONFIG.timeline) {
+    if (elapsed >= item.start) current = item;
+  }
+
+  scenes.forEach(s => s.classList.toggle('active', s.id === current.scene));
+  hudLeft.textContent = current.hud;
+
+  animFrame = requestAnimationFrame(updateStage);
+}
+
+playBtn.addEventListener('click', () => {
+  document.body.classList.add('playing');
+  startTime = performance.now();
+  bgAudio.currentTime = 0;
+  bgAudio.play().catch(() => {});
+  cancelAnimationFrame(animFrame);
+  animFrame = requestAnimationFrame(updateStage);
+});
+</script>
+</body>
+</html>
